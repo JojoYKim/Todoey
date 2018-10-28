@@ -9,12 +9,16 @@
 import UIKit
 import RealmSwift
 import CoreData
+import ChameleonFramework
 
 class TodoListViewController: SwipeTableViewController {
 
     
     var toDoItems : Results<Item>?
     let realm = try! Realm()
+    
+    @IBOutlet weak var searchBar: UISearchBar!
+    
     
     var selectedCategory : Category? {
         didSet {
@@ -25,8 +29,40 @@ class TodoListViewController: SwipeTableViewController {
     override func viewDidLoad() {
         
         super.viewDidLoad()
+
     }
     
+    //viewWillAppear is point at which everything is loaded, navbar may not be loaded in viewDidLoad, as such if you place in viewDidLoad()
+    //navbar may not be loaded yet - viewWillAppear = guaranteed its loaded
+    override func viewWillAppear(_ animated: Bool) {
+        
+        
+        title = selectedCategory?.name
+        guard let colourHex = selectedCategory?.colour else { fatalError("colourHex") }
+        updateNavBar(withHexCode: colourHex)
+    
+    }
+    
+    //State just before tranistion to different view, this code will ensure home bar colour doesn't change
+    override func viewWillDisappear(_ animated: Bool) {
+        updateNavBar(withHexCode: "1D9BF6")
+    }
+    
+    
+    //MARK: - Navbar setup methods
+    func updateNavBar(withHexCode colourHexCode: String) {
+        
+        
+        //Guard statement, throw fatal error if navigationcontroller does not exist
+        guard let navBar = navigationController?.navigationBar else { fatalError("Navigation Controller does not exist") }
+        guard let navBarColour = UIColor(hexString: colourHexCode) else { fatalError("navBarColour") }
+        navBar.barTintColor = navBarColour
+        navBar.tintColor = ContrastColorOf(navBarColour, returnFlat: true)
+        navBar.largeTitleTextAttributes = [NSAttributedString.Key.foregroundColor: ContrastColorOf(navBarColour, returnFlat: true)]
+        
+        searchBar.barTintColor = navBarColour
+        
+    }
     
     //MARK: - Tableview DataSource Methods
     
@@ -42,7 +78,15 @@ class TodoListViewController: SwipeTableViewController {
         if let item = toDoItems?[indexPath.row] {
             
             cell.textLabel?.text = item.title
+            
+            if let colour = UIColor(hexString: selectedCategory?.colour ?? "1D98F6")?.darken(byPercentage: CGFloat(indexPath.row)/CGFloat(toDoItems!.count)) {
+                cell.backgroundColor = colour
+                cell.textLabel?.textColor = ContrastColorOf(colour, returnFlat: true)
+                cell.tintColor = ContrastColorOf(colour, returnFlat: true)
+            }
+            
             cell.accessoryType = item.done ? .checkmark : .none
+            
 
         } else {
             cell.textLabel?.text = "No Items Added"
